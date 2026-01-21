@@ -9,7 +9,7 @@
     "dev": "concurrently -k -n oauth,mcp -c green,cyan \"npm:dev:oauth\" \"npm:dev:mcp\""
   },
   "dependencies": {
-    "@authlete/typescript-sdk": "^0.0.6-beta",
+    "@authlete/typescript-sdk": "^0.0.7-beta",
     "@hono/mcp": "^0.2.3",
     "@hono/node-server": "^1.9.1",
     "@hono/session": "^0.2.0",
