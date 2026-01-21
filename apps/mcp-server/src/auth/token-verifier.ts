@@ -29,7 +29,14 @@ export function createTokenVerifier(config: TokenVerifierConfig) {
     }
     const jwks = await jwksPromise;
     if (!jwks) {
+      jwksPromise = null;
+      jwksUriPromise = null;
       throw new Error('JWKS is unavailable');
+    }
+    console.log(`Verifying token issued by ${config.issuer} for audience ${config.audience}`);
+    const jwksUri = await jwksUriPromise;
+    if (jwksUri) {
+      console.log(`Using JWKS URI: ${jwksUri}`);
     }
     const { payload } = await jwtVerify(token, jwks, {
       issuer: config.issuer,
@@ -57,6 +64,7 @@ async function resolveJwksUri(issuer: string) {
       }
       const metadata = (await response.json()) as AuthorizationServerMetadata;
       if (metadata?.jwks_uri) {
+        console.log(`Discovered JWKS URI: ${metadata.jwks_uri}`);
         return metadata.jwks_uri;
       }
     } catch (error) {

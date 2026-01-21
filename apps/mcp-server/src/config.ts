@@ -8,7 +8,7 @@ const config = {
   audience: `${baseMcpUrl.replace(/\/$/, '')}/mcp`,
   baseMcpUrl,
   documentationUrl: process.env.MCP_SERVICE_DOCUMENTATION_URL,
-  scopes: process.env.MCP_SCOPES?.split(',').map((scope) => scope.trim()).filter(Boolean) ?? ['mcp.echo'],
+  scopes: process.env.MCP_SCOPES?.split(',').map((scope) => scope.trim()).filter(Boolean) ?? [],
   resourceName: process.env.MCP_RESOURCE_NAME ?? 'Echo MCP Server',
   serverName: process.env.MCP_SERVER_NAME ?? 'authlete-mcp-server',
   serverVersion: process.env.MCP_SERVER_VERSION ?? '0.1.0',

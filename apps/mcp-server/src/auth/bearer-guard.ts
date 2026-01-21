@@ -46,6 +46,7 @@ export function createBearerGuard(options: BearerGuardOptions): MiddlewareHandle
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      console.warn(`token: ${token}`);
       console.warn(`Access token verification failed: ${message}`);
       return respond(401, 'invalid_token', 'The access token provided is expired, revoked, malformed, or invalid');
     }
