@@ -1,0 +1,420 @@
+import type { Context } from 'hono';
+import type {
+    AuthorizationFailResponse,
+    AuthorizationRequest,
+    AuthorizationResponse,
+    ClientLimitedAuthorization,
+    TokenRequest,
+    TokenResponse
+} from '@authlete/typescript-sdk/dist/commonjs/models';
+import type { AuthorizationSession } from '../types/session';
+import type { User } from '../types/user';
+import { getAuthlete } from '../authlete';
+
+const authlete = getAuthlete();
+const serviceId = process.env.AUTHLETE_SERVICE_APIKEY || '';
+
+const demoUser: User = {
+    id: 'demo-user',
+    claims: {
+        familyName: 'Demo',
+        givenName: 'User'
+    },
+    consentedScopes: [],
+};
+
+if (!serviceId) {
+    console.warn('AUTHLETE_SERVICE_APIKEY is not set.');
+}
+
+export const sampleClientHandler = (c: Context) => {
+    const tokenEndpoint = '/token';
+    return c.html(`<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sample Client</title>
+  </head>
+  <body>
+    <main>
+      <h1>Sample Client</h1>
+      <h2>Authorization Request</h2>
+      <pre id="authorize-url">Loading...</pre>
+      <button id="authorize" type="button">Start authorization</button>
+      <h2>Callback Query</h2>
+      <pre id="params">Loading...</pre>
+      <button id="exchange" type="button">Exchange code</button>
+      <h2>Token Response</h2>
+      <pre id="result">Waiting...</pre>
+    </main>
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      const error = params.get('error');
+      const paramsView = document.getElementById('params');
+      const authorizeUrlView = document.getElementById('authorize-url');
+      const result = document.getElementById('result');
+      const authorizeButton = document.getElementById('authorize');
+      const exchangeButton = document.getElementById('exchange');
+      const authorizeEndpoint = '/authorize';
+
+      paramsView.textContent = JSON.stringify(Object.fromEntries(params), null, 2) || '{}';
+      exchangeButton.disabled = !code || Boolean(error);
+
+      if (error) {
+        result.textContent = 'Error: ' + error;
+      } else if (!code) {
+        result.textContent = 'No code in query string.';
+      }
+
+      const authorizeParams = new URLSearchParams({
+        response_type: 'code',
+        client_id: 'sample-client',
+        redirect_uri: window.location.origin + '/sample-client',
+        scope: 'openid profile',
+      });
+      const authorizeUrl = authorizeEndpoint + '?' + authorizeParams.toString();
+      authorizeUrlView.textContent = authorizeUrl;
+      authorizeButton.addEventListener('click', () => {
+        window.location.href = authorizeUrl;
+      });
+
+      exchangeButton.addEventListener('click', () => {
+        if (!code || error) {
+          return;
+        }
+        result.textContent = 'Exchanging code...';
+        const body = new URLSearchParams({
+          grant_type: 'authorization_code',
+          code,
+          client_id: 'sample-client',
+          redirect_uri: window.location.origin + '/sample-client',
+        });
+
+        fetch('${tokenEndpoint}', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body,
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            result.textContent = JSON.stringify(data, null, 2);
+          })
+          .catch((err) => {
+            result.textContent = 'Token request failed: ' + err;
+          });
+      });
+    </script>
+  </body>
+</html>`);
+};
+
+export const authorizeHandler = async (c: Context) => {
+    const parameters = c.req.url.split('?')[1] ?? '';
+    const authorizationRequest: AuthorizationRequest = {
+        parameters
+    };
+
+    const response: AuthorizationResponse = await authlete.authorization.processRequest({
+        serviceId: serviceId,
+        authorizationRequest
+    });
+
+    return handleAuthorizeAction(c, response);
+};
+
+export const jwksHandler = async (c: Context) => {
+    const jwks = await authlete.jwkSetEndpoint.serviceJwksGetApi({
+        serviceId
+    });
+    return c.json(jwks);
+};
+
+export const openIdConfigHandler = async (c: Context) => {
+    const config = await authlete.service.getConfiguration({
+        serviceId
+    })
+    return c.json(config)
+};
+
+async function handleAuthorizeAction(
+    c: Context,
+    response: AuthorizationResponse
+) {
+    const responseContent = response.responseContent ?? '';
+    c.header('Cache-Control', 'no-store');
+    c.header('Pragma', 'no-cache');
+
+    switch (response.action) {
+        case 'INTERNAL_SERVER_ERROR':
+            c.header('Content-Type', 'application/json');
+            return c.body(responseContent, 500);
+        case 'BAD_REQUEST':
+            c.header('Content-Type', 'application/json');
+            return c.body(responseContent, 400);
+        case 'LOCATION':
+            if (responseContent) {
+                return c.redirect(responseContent);
+            }
+            c.header('Content-Type', 'application/json');
+            return c.body('', 500);
+        case 'FORM':
+            c.header('Content-Type', 'text/html; charset=UTF-8');
+            return c.body(responseContent, 200);
+        case 'INTERACTION':
+            await c.var.session.update((prev) => ({
+                ...prev,
+                authorizationResponse: response,
+            } satisfies AuthorizationSession));
+            return renderConsent(c, response);
+        case 'NO_INTERACTION':
+            return c.json(
+                {
+                    error: 'server_error',
+                    error_description: `Action handler not implemented: ${response.action}`
+                },
+                501,
+            );
+        default:
+            c.header('Content-Type', 'application/json');
+            return c.body('', 500);
+    }
+}
+
+async function renderConsent(
+    c: Context,
+    response: AuthorizationResponse
+) {
+    const clientName = response.client?.clientName || 'Unknown Client';
+    const clientId = resolveClientId(response) || 'unknown-client-id';
+    const scopes = response.scopes ?? [];
+
+    return c.html(`<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Consent</title>
+  </head>
+  <body>
+    <main>
+      <h1>Consent</h1>
+      <p>Client: ${clientName}</p>
+      <p>Client ID: ${clientId}</p>
+      <h2>Scopes</h2>
+      ${scopes.length === 0 ? '<p>No scopes requested.</p>' : `<ul>${scopes.map((scope) => `<li>${scope.name}: ${scope.description}</li>`).join('')}</ul>`}
+      <form method="post" action="/consent" style="margin-top: 12px;">
+      <button type="submit" name="decision" value="approve">Log in and approve</button>
+      <button type="submit" name="decision" value="deny">Deny</button>
+      </form>
+    </main>
+  </body>
+</html>`);
+}
+
+function resolveClientId(info: AuthorizationResponse) {
+    if (!info.client) {
+        return null;
+    }
+    const client: ClientLimitedAuthorization = info.client;
+    switch (client.clientSource) {
+        case 'AUTOMATIC_REGISTRATION':
+        case 'EXPLICIT_REGISTRATION':
+            if (client.entityId) {
+                return client.entityId;
+            } else {
+                throw new Error('Client entityId is missing');
+            }
+        case 'METADATA_DOCUMENT':
+        // return client.metadataDocumentLocation; //TODO
+        case 'DYNAMIC_REGISTRATION':
+        case 'STATIC_REGISTRATION':
+            return client.clientIdAlias;
+        default:
+            return client.clientIdAlias;
+    }
+}
+
+export const consentHandler = async (c: Context) => {
+    const data = (await c.var.session.get()) as AuthorizationSession | null;
+    const body = await c.req.parseBody();
+    const decision = typeof body.decision === 'string' ? body.decision : '';
+    console.log('Consent decision:', decision);
+    if (!data || !data.authorizationResponse) {
+        return c.json(
+            {
+                error: 'server_error',
+                error_description: 'Authorization session not found'
+            },
+            500,
+        );
+    }
+
+    if (decision !== 'approve') {
+        c.var.session.update((prev) => ({
+            ...prev,
+            authorizationResponse: undefined,
+        } satisfies AuthorizationSession));
+        const failResponse = await authlete.authorization.fail({
+            serviceId,
+            authorizationFailRequest: {
+                ticket: data.authorizationResponse.ticket!,
+                reason: 'DENIED',
+                description: 'User denied the authorization request'
+            }
+        })
+
+        return handleFailAction(c, failResponse);
+
+    } if (!data.authorizationResponse.ticket) {
+        return c.json(
+            {
+                error: 'server_error',
+                error_description: 'Authorization ticket not found'
+            },
+            500,
+        );
+    }
+
+    const scopes = data.authorizationResponse.scopes?.map((s) => s.name).filter((s) => s !== undefined) ?? [];
+    
+    const issueResponse = await authlete.authorization.issue({
+        serviceId,
+        authorizationIssueRequest: {
+            ticket: data.authorizationResponse.ticket!,
+            subject: demoUser.id,
+            claims: JSON.stringify(demoUser.claims),
+            scopes: scopes
+        }
+    });
+    switch (issueResponse.action) {
+        case 'LOCATION':
+            if (issueResponse.responseContent) {
+                return c.redirect(issueResponse.responseContent);
+            }
+        case 'BAD_REQUEST':
+            return c.json(
+                {
+                    error: 'server_error',
+                    error_description: issueResponse.resultMessage || 'Failed to issue authorization'
+                },
+                500,
+            );
+        default:
+            return c.json(
+                {
+                    error: 'server_error',
+                    error_description: `Unsupported action: ${issueResponse.action}`
+                },
+                500,
+            );
+    }
+
+};
+
+export const tokenHandler = async (c: Context) => {
+    const parameters = await c.req.text();
+    const authHeader = c.req.header('authorization');
+    const credentials = parseBasicCredentials(authHeader);
+
+    const tokenRequest: TokenRequest = {
+        parameters,
+        clientId: credentials?.clientId,
+        clientSecret: credentials?.clientSecret,
+    };
+
+    const response = await authlete.token.process({
+        serviceId,
+        tokenRequest,
+    });
+
+    return handleTokenAction(c, response, authHeader);
+};
+
+function handleTokenAction(c: Context, response: TokenResponse, authHeader: string | undefined) {
+    const responseContent = response.responseContent ?? '';
+    c.header('Cache-Control', 'no-store');
+    c.header('Pragma', 'no-cache');
+
+    switch (response.action) {
+        case 'INTERNAL_SERVER_ERROR':
+            c.header('Content-Type', 'application/json');
+            return c.body(responseContent, 500);
+        case 'INVALID_CLIENT': {
+            c.header('Content-Type', 'application/json');
+            if (authHeader?.toLowerCase().startsWith('basic ')) {
+                c.header('WWW-Authenticate', 'Basic realm="token"');
+                return c.body(responseContent, 401);
+            }
+            return c.body(responseContent, 400);
+        }
+        case 'BAD_REQUEST':
+            c.header('Content-Type', 'application/json');
+            return c.body(responseContent, 400);
+        case 'OK':
+            c.header('Content-Type', 'application/json');
+            return c.body(responseContent, 200);
+        case 'PASSWORD':
+        case 'TOKEN_EXCHANGE':
+        case 'JWT_BEARER':
+            return c.json(
+                {
+                    error: 'server_error',
+                    error_description: `Action handler not implemented: ${response.action}`
+                },
+                501,
+            );
+        default:
+            c.header('Content-Type', 'application/json');
+            return c.body('', 500);
+    }
+}
+
+function parseBasicCredentials(authHeader: string | undefined) {
+    if (!authHeader || !authHeader.toLowerCase().startsWith('basic ')) {
+        return null;
+    }
+
+    try {
+        const encoded = authHeader.slice(6).trim();
+        const decoded = Buffer.from(encoded, 'base64').toString('utf8');
+        const separatorIndex = decoded.indexOf(':');
+        if (separatorIndex === -1) {
+            return null;
+        }
+        return {
+            clientId: decoded.slice(0, separatorIndex),
+            clientSecret: decoded.slice(separatorIndex + 1),
+        };
+    } catch {
+        return null;
+    }
+}
+
+function handleFailAction(c: Context, response: AuthorizationFailResponse) {
+    const responseContent = response.responseContent ?? '';
+    c.header('Cache-Control', 'no-store');
+    c.header('Pragma', 'no-cache');
+
+    switch (response.action) {
+        case 'INTERNAL_SERVER_ERROR':
+            c.header('Content-Type', 'application/json');
+            return c.body(responseContent, 500);
+        case 'BAD_REQUEST':
+            c.header('Content-Type', 'application/json');
+            return c.body(responseContent, 400);
+        case 'LOCATION':
+            if (responseContent) {
+                return c.redirect(responseContent);
+            }
+            c.header('Content-Type', 'application/json');
+            return c.body('', 500);
+        case 'FORM':
+            c.header('Content-Type', 'text/html; charset=UTF-8');
+            return c.body(responseContent, 200);
+        default:
+            c.header('Content-Type', 'application/json');
+            return c.body('', 500);
+    }
+}

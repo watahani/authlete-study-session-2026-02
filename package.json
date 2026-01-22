@@ -4,12 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev:oauth": "tsx watch apps/oauth-server/src/index.ts",
-    "dev:mcp": "tsx watch apps/mcp-server/src/index.ts",
-    "dev": "concurrently -k -n oauth,mcp -c green,cyan \"npm:dev:oauth\" \"npm:dev:mcp\""
+    "dev:oauth": "npx tsx watch apps/oauth-server/src/index.ts",
+    "dev:mcp": "npx tsx watch apps/mcp-server/src/index.ts",
+    "dev": "npx concurrently -k -n oauth,mcp -c green,cyan \"npm:dev:oauth\" \"npm:dev:mcp\""
   },
   "dependencies": {
-    "@authlete/typescript-sdk": "^0.0.7-beta",
+    "@authlete/typescript-sdk": "^0.0.8-beta",
     "@hono/mcp": "^0.2.3",
     "@hono/node-server": "^1.9.1",
     "@hono/session": "^0.2.0",
