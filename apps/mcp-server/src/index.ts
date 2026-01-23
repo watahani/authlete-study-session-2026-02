@@ -8,6 +8,7 @@ import { Hono } from 'hono';
 import { PORT, config } from './config.js';
 import { createMcpRequestHandler as mcpRequestHandler } from './handlers/handle-mcp-request.js';
 import { registerEchoTool } from './mcp/echo.js';
+import { registerGreetTool } from './mcp/greet.js';
 import { createMcpGuard } from './mcp/mcp-guard.js';
 import type { AccessTokenContext } from './auth/bearer-guard.js';
 
@@ -40,6 +41,7 @@ const mcpServer = new McpServer({
 });
 
 registerEchoTool(mcpServer);
+registerGreetTool(mcpServer);
 const transport = new StreamableHTTPTransport({
   enableJsonResponse: true,
 });

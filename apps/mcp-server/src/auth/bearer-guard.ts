@@ -1,4 +1,5 @@
 import type { Context, MiddlewareHandler } from 'hono';
+import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 
 export type TokenClaims = {
   scope?: string | string[];
@@ -6,10 +7,7 @@ export type TokenClaims = {
   [key: string]: unknown;
 };
 
-export type AccessTokenContext = {
-  token: string;
-  payload: TokenClaims;
-};
+export type AccessTokenContext = AuthInfo;
 
 type ScopeClaim = string | string[] | undefined;
 
@@ -40,7 +38,17 @@ export function createBearerGuard(options: BearerGuardOptions): MiddlewareHandle
 
     try {
       const payload = await options.verifyToken(token);
-      c.set('auth', { token, payload });
+      const scopes = Array.from(extractScopes(payload.scope as ScopeClaim, payload['scp'] as ScopeClaim));
+      const clientId = resolveClientId(payload);
+      const expiresAt = typeof payload.exp === 'number' ? payload.exp : undefined;
+      const authInfo: AccessTokenContext = {
+        token,
+        clientId,
+        scopes,
+        expiresAt,
+        extra: { payload },
+      };
+      c.set('auth', authInfo);
       if (!hasRequiredScopes(payload, options.requiredScopes)) {
         return respond(403, 'insufficient_scope', `The request requires higher privileges than provided. Required scopes: ${options.requiredScopes.join(', ')}`);
       }
@@ -87,4 +95,15 @@ function extractScopes(scopeClaim?: ScopeClaim, scpClaim?: ScopeClaim) {
   add(scopeClaim);
   add(scpClaim);
   return scopes;
+}
+
+function resolveClientId(payload: TokenClaims) {
+  const candidates = ['client_id', 'clientId', 'azp', 'sub'];
+  for (const key of candidates) {
+    const value = payload[key];
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+  return 'unknown';
 }

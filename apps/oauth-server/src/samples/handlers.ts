@@ -1,6 +1,5 @@
 import type { Context } from 'hono';
 import {
-    AuthorizationFailRequestReason,
     type AuthorizationFailResponse,
     type AuthorizationRequest,
     type AuthorizationResponse,
@@ -14,8 +13,9 @@ import type { User } from '../types/user';
 const demoUser: User = {
     id: 'demo-user',
     claims: {
-        familyName: 'Demo',
-        givenName: 'User'
+        family_name: 'Demo',
+        given_name: 'Authlete',
+        preffered_username: "Authlete Demo User"
     },
     consentedScopes: [],
 };
@@ -102,6 +102,8 @@ export const sampleClientHandler = (c: Context) => {
   </body>
 </html>`);
 };
+
+
 
 export const authorizeHandler = async (c: Context) => {
     const { authlete, serviceId } = c.var;
@@ -294,6 +296,7 @@ export const consentHandler = async (c: Context) => {
             ticket: data.authorization.ticket,
             subject: demoUser.id,
             claims: JSON.stringify(demoUser.claims),
+            jwtAtClaims: JSON.stringify(demoUser.claims),
             scopes: data.authorization.scopesToConsent
         }
     });
