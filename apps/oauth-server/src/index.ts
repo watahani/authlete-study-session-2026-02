@@ -6,10 +6,14 @@ import { type Session, useSession, useSessionStorage, type Storage } from '@hono
 import { serve } from '@hono/node-server';
 import type { AuthorizationSession } from './types/session';
 import {
+  authorizeHandler,
+  consentHandler,
+  jwksHandler,
+  openIdConfigHandler,
   sampleClientHandler,
+  tokenHandler,
 } from './samples/handlers';
 import { getAuthlete } from './authlete';
-import { AuthorizationRequest, AuthorizationResponse } from '@authlete/typescript-sdk/dist/commonjs/models';
 
 const app = new Hono();
 const PORT = Number(process.env.OAUTH_PORT ?? 9000);
@@ -72,33 +76,15 @@ app.get('/', (c: Context) =>
 
 app.get('/sample-client', sampleClientHandler);
 
-app.get('/authorize', async (c: Context) => {
-  console.log('GET /authorize called');
+app.get('/authorize', authorizeHandler);
 
-  // implement authorization endpoint logic here
-  const { authlete, serviceId } = c.var;
-  const parameters = c.req.url.split('?')[1] ?? '';
-  // const authorizationRequest: AuthorizationRequest = {
-  //   parameters
-  // };
+app.post('/consent', consentHandler);
 
-  // const response: AuthorizationResponse = await authlete.authorization.processRequest({
-  //   serviceId: serviceId,
-  //   authorizationRequest
-  // });
-  // ...
-  return c.json({ error: 'not_implemented' }, 501)
-}
-);
+app.post('/token', tokenHandler);
 
-app.post('/consent', async (c: Context) => c.json({ error: 'not_implemented' }, 501));
+app.get('/jwks', jwksHandler);
 
-app.post('/token', async (c: Context) => c.json({ error: 'not_implemented' }, 501));
-
-app.get('/jwks', async (c: Context) => c.json({ error: 'not_implemented' }, 501));
-
-app.get('/.well-known/openid-configuration', async (c: Context) =>
-  c.json({ error: 'not_implemented' }, 501));
+app.get('/.well-known/openid-configuration', openIdConfigHandler);
 
 const server = serve({
   fetch: app.fetch,
