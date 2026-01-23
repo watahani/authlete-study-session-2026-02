@@ -8,6 +8,7 @@ import type { AuthorizationSession } from './types/session';
 import {
   sampleClientHandler,
 } from './samples/handlers';
+import { getAuthlete } from './authlete';
 
 const app = new Hono();
 const PORT = Number(process.env.OAUTH_PORT ?? 9000);
@@ -18,6 +19,8 @@ const SESSION_SECRET =
 declare module 'hono' {
   interface ContextVariableMap {
     session: Session<AuthorizationSession>;
+    authlete: ReturnType<typeof getAuthlete>;
+    serviceId: string;
   }
 }
 
@@ -38,6 +41,15 @@ app.use(
     secret: SESSION_SECRET,
   }),
 );
+app.use(async (c, next) => {
+  const serviceId = process.env.AUTHLETE_SERVICE_APIKEY || '';
+  if (!serviceId) {
+    console.warn('AUTHLETE_SERVICE_APIKEY is not set.');
+  }
+  c.set('authlete', getAuthlete());
+  c.set('serviceId', serviceId);
+  await next();
+});
 
 const corsHandler = cors({
   origin: (origin) => origin,

@@ -10,10 +10,6 @@ import {
 } from '@authlete/typescript-sdk/dist/commonjs/models';
 import type { AuthorizationSession } from '../types/session';
 import type { User } from '../types/user';
-import { getAuthlete } from '../authlete';
-
-const authlete = getAuthlete();
-const serviceId = process.env.AUTHLETE_SERVICE_APIKEY || '';
 
 const demoUser: User = {
     id: 'demo-user',
@@ -23,10 +19,6 @@ const demoUser: User = {
     },
     consentedScopes: [],
 };
-
-if (!serviceId) {
-    console.warn('AUTHLETE_SERVICE_APIKEY is not set.');
-}
 
 export const sampleClientHandler = (c: Context) => {
     const tokenEndpoint = '/token';
@@ -112,6 +104,7 @@ export const sampleClientHandler = (c: Context) => {
 };
 
 export const authorizeHandler = async (c: Context) => {
+    const { authlete, serviceId } = c.var;
     const parameters = c.req.url.split('?')[1] ?? '';
     const authorizationRequest: AuthorizationRequest = {
         parameters
@@ -126,6 +119,7 @@ export const authorizeHandler = async (c: Context) => {
 };
 
 export const jwksHandler = async (c: Context) => {
+    const { authlete, serviceId } = c.var;
     const jwks = await authlete.jwkSetEndpoint.serviceJwksGetApi({
         serviceId
     });
@@ -133,6 +127,7 @@ export const jwksHandler = async (c: Context) => {
 };
 
 export const openIdConfigHandler = async (c: Context) => {
+    const { authlete, serviceId } = c.var;
     const config = await authlete.service.getConfiguration({
         serviceId
     })
@@ -143,6 +138,7 @@ async function handleAuthorizeAction(
     c: Context,
     response: AuthorizationResponse
 ) {
+    const { authlete, serviceId } = c.var;
     const responseContent = response.responseContent ?? '';
     c.header('Cache-Control', 'no-store');
     c.header('Pragma', 'no-cache');
@@ -248,6 +244,7 @@ function resolveClientId(info: AuthorizationResponse) {
 }
 
 export const consentHandler = async (c: Context) => {
+    const { authlete, serviceId } = c.var;
     const data = (await c.var.session.get()) as AuthorizationSession | null;
     const body = await c.req.parseBody();
     const decision = typeof body.decision === 'string' ? body.decision : '';
@@ -323,6 +320,7 @@ export const consentHandler = async (c: Context) => {
 };
 
 export const tokenHandler = async (c: Context) => {
+    const { authlete, serviceId } = c.var;
     const parameters = await c.req.text();
     const authHeader = c.req.header('authorization');
     const credentials = parseBasicCredentials(authHeader);
