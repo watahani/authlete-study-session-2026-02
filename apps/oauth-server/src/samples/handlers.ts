@@ -196,6 +196,7 @@ async function renderConsent(
     const clientName = response.client?.clientName || 'Unknown Client';
     const clientId = resolveClientId(response) || 'unknown-client-id';
     const scopes = response.scopes ?? [];
+    const resources = response.resources ?? [];
 
     return c.html(`<!doctype html>
 <html lang="en">
@@ -211,6 +212,8 @@ async function renderConsent(
       <p>Client ID: ${clientId}</p>
       <h2>Scopes</h2>
       ${scopes.length === 0 ? '<p>No scopes requested.</p>' : `<ul>${scopes.map((scope) => `<li>${scope.name}: ${scope.description}</li>`).join('')}</ul>`}
+      <h2>Resources</h2>
+      ${resources.length === 0 ? '<p>No resources requested.</p>' : `<ul>${resources.map((resource) => `<li>${resource}</li>`).join('')}</ul>`}
       <form method="post" action="/consent" style="margin-top: 12px;">
       <button type="submit" name="decision" value="approve">Log in and approve</button>
       <button type="submit" name="decision" value="deny">Deny</button>
