@@ -1,11 +1,12 @@
 import type { Context } from 'hono';
-import type {
-    AuthorizationFailResponse,
-    AuthorizationRequest,
-    AuthorizationResponse,
-    ClientLimitedAuthorization,
-    TokenRequest,
-    TokenResponse
+import {
+    AuthorizationFailRequestReason,
+    type AuthorizationFailResponse,
+    type AuthorizationRequest,
+    type AuthorizationResponse,
+    type ClientLimitedAuthorization,
+    type TokenRequest,
+    type TokenResponse
 } from '@authlete/typescript-sdk/dist/commonjs/models';
 import type { AuthorizationSession } from '../types/session';
 import type { User } from '../types/user';
@@ -163,19 +164,29 @@ async function handleAuthorizeAction(
             c.header('Content-Type', 'text/html; charset=UTF-8');
             return c.body(responseContent, 200);
         case 'INTERACTION':
+            const authorizationSession = response.ticket
+                ? {
+                      ticket: response.ticket,
+                      scopesToConsent: response.scopes
+                          ?.map((scope) => scope.name)
+                          .filter((scope): scope is string => Boolean(scope)) ?? [],
+                  }
+                : undefined;
             await c.var.session.update((prev) => ({
                 ...prev,
-                authorizationResponse: response,
+                authorization: authorizationSession,
             } satisfies AuthorizationSession));
             return renderConsent(c, response);
         case 'NO_INTERACTION':
-            return c.json(
-                {
-                    error: 'server_error',
-                    error_description: `Action handler not implemented: ${response.action}`
-                },
-                501,
-            );
+            const errorResponse = await authlete.authorization.fail({
+                serviceId,
+                authorizationFailRequest: {
+                    ticket: response.ticket!,
+                    reason: 'SERVER_ERROR',
+                    description: 'prompt=none is not supported in this sample server'
+                }
+            });
+            return handleFailAction(c, errorResponse);
         default:
             c.header('Content-Type', 'application/json');
             return c.body('', 500);
@@ -241,7 +252,7 @@ export const consentHandler = async (c: Context) => {
     const body = await c.req.parseBody();
     const decision = typeof body.decision === 'string' ? body.decision : '';
     console.log('Consent decision:', decision);
-    if (!data || !data.authorizationResponse) {
+    if (!data || !data.authorization) {
         return c.json(
             {
                 error: 'server_error',
@@ -254,12 +265,12 @@ export const consentHandler = async (c: Context) => {
     if (decision !== 'approve') {
         c.var.session.update((prev) => ({
             ...prev,
-            authorizationResponse: undefined,
+            authorization: undefined,
         } satisfies AuthorizationSession));
         const failResponse = await authlete.authorization.fail({
             serviceId,
             authorizationFailRequest: {
-                ticket: data.authorizationResponse.ticket!,
+                ticket: data.authorization.ticket,
                 reason: 'DENIED',
                 description: 'User denied the authorization request'
             }
@@ -267,7 +278,7 @@ export const consentHandler = async (c: Context) => {
 
         return handleFailAction(c, failResponse);
 
-    } if (!data.authorizationResponse.ticket) {
+    } if (!data.authorization.ticket) {
         return c.json(
             {
                 error: 'server_error',
@@ -277,15 +288,13 @@ export const consentHandler = async (c: Context) => {
         );
     }
 
-    const scopes = data.authorizationResponse.scopes?.map((s) => s.name).filter((s) => s !== undefined) ?? [];
-    
     const issueResponse = await authlete.authorization.issue({
         serviceId,
         authorizationIssueRequest: {
-            ticket: data.authorizationResponse.ticket!,
+            ticket: data.authorization.ticket,
             subject: demoUser.id,
             claims: JSON.stringify(demoUser.claims),
-            scopes: scopes
+            scopes: data.authorization.scopesToConsent
         }
     });
     switch (issueResponse.action) {
@@ -361,7 +370,7 @@ function handleTokenAction(c: Context, response: TokenResponse, authHeader: stri
             return c.json(
                 {
                     error: 'server_error',
-                    error_description: `Action handler not implemented: ${response.action}`
+                    error_description: ` ${response.action} grant type is not supported in this sample server`
                 },
                 501,
             );
