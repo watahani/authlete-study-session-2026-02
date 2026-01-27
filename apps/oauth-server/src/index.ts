@@ -14,12 +14,11 @@ import {
   tokenHandler,
 } from './samples/handlers';
 import { getAuthlete } from './authlete';
+import { config } from './config';
 
 const app = new Hono();
-const PORT = Number(process.env.OAUTH_PORT ?? 9000);
-const SESSION_SECRET =
-  process.env.AUTH_SECRET ??
-  '0000000000000000000000000000000000000000000000000000000000000000';
+const PORT = config.port;
+const SESSION_SECRET = config.sessionSecret;
 
 declare module 'hono' {
   interface ContextVariableMap {
@@ -47,10 +46,7 @@ app.use(
   }),
 );
 app.use(async (c, next) => {
-  const serviceId = process.env.AUTHLETE_SERVICE_APIKEY || '';
-  if (!serviceId) {
-    console.warn('AUTHLETE_SERVICE_APIKEY is not set.');
-  }
+  const serviceId = config.authleteServiceApiKey;
   c.set('authlete', getAuthlete());
   c.set('serviceId', serviceId);
   await next();

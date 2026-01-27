@@ -9,6 +9,7 @@ import {
 } from '@authlete/typescript-sdk/dist/commonjs/models';
 import type { AuthorizationSession } from '../types/session';
 import type { User } from '../types/user';
+import { config } from '../config';
 
 const demoUser: User = {
     id: 'demo-user',
@@ -22,6 +23,7 @@ const demoUser: User = {
 
 export const sampleClientHandler = (c: Context) => {
     const tokenEndpoint = '/token';
+    const scope = config.mcpScopes;
     return c.html(`<!doctype html>
 <html lang="en">
   <head>
@@ -94,9 +96,10 @@ export const sampleClientHandler = (c: Context) => {
           response_type: 'code',
           client_id: 'sample-client',
           redirect_uri: window.location.origin + '/sample-client',
-          scope: 'openid profile',
+          scope: '${scope}',
           code_challenge: challenge,
           code_challenge_method: 'S256',
+          resource: 'https://testresource.example.com',
         });
         return authorizeEndpoint + '?' + authorizeParams.toString();
       }
