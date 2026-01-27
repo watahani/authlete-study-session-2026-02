@@ -1,79 +1,111 @@
 # Authlete Study Session 2026-02
 
-Development bootstrap for hosting the oauth-server and mcp-server over HTTP for iterative work. 
+This repository contains hands-on materials for the Authlete study session  
+[OAuth & OpenID Connect Study Session – Hands-on: Building an Authorization Server Compatible with the Latest MCP Specification](https://authlete.connpass.com/event/380872/).
 
-## Requirements
+In this hands-on session, you will build an authorization server compliant with  
+[Model Context Protocol Version 2025-11-25](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization) using [Authlete](https://www.authlete.com).
 
-- Node.js runtime (>= 18)
-- [ngrok CLI](https://ngrok.com/download) – Authlete requires the authorization server to be reachable via HTTPS, so ngrok (or an equivalent public HTTPS tunnel) is mandatory even for local work.
+The goal is to use VS Code as an MCP client, leverage a Client ID Metadata Document (CIMD) for automatic registration, and call an MCP server protected by your own authorization server.
 
-## Install
+## Prerequisites
 
-```bash
+Before participating in the hands-on session, please install the following tools and perform the verification steps described later.
+
+- git: Required to clone the repository.
+- Node.js runtime (>= 18): Required to run the sample.
+- [ngrok CLI](https://ngrok.com/download): Required to expose the authorization server over HTTPS.
+
+### Installing Node.js and Verifying the Setup
+
+Download Node.js from the [Node.js](https://nodejs.org/ja/download) website, or install it using your OS package manager.
+
+```sh
+# eg)
+sudo apt install nodejs
+winget install "Node.js LTS"
+```
+
+After installation, clone this repository and start the mock servers.
+
+```sh
+git clone https://github.com/watahani/authlete-study-session-2026-02.git
+cd authlete-study-sessoin-2026-02
+
 npm install
-```
-
-## Configuration
-
-Copy the sample environment file and adjust it to match your Authlete/ngrok setup:
-
-```bash
-cp .env.example .env
-# then edit .env
-```
-
-All server processes automatically load `.env` via `dotenv`, so the values you set there will apply to both `npm run dev` and the Playwright tests later on.
-
-## Local HTTP development
-
-```bash
 npm run dev
+
+# > authlete-study-session-2026-02@0.1.0 dev
+# > npx concurrently -k -n oauth,mcp -c green,cyan "npm:dev:oauth" "npm:dev:mcp"
+# 
+# [mcp] 
+# [mcp] > authlete-study-session-2026-02@0.1.0 dev:mcp
+# [mcp] > npx tsx watch apps/mcp-server/src/index.ts
+# [mcp] 
+# [oauth] 
+# [oauth] > authlete-study-session-2026-02@0.1.0 dev:oauth
+# [oauth] > npx tsx watch apps/oauth-server/src/index.ts
+# [oauth] 
+# [mcp] mcp-server listening on http://localhost:9001
+# [oauth] AUTHLETE_BASE_URL is not set.
+# [oauth] AUTHLETE_SERVICE_ACCESSTOKEN is not set.
+# [oauth] AUTHLETE_SERVICE_APIKEY is not set.
+# [oauth] oauth-server listening on http://localhost:9000
 ```
 
-- oauth-server: http://localhost:9000
-- mcp-server: http://localhost:9001 (protected with OAuth Bearer tokens; stays on localhost/HTTP)
+Access http://localhost:9000.  
+If you see a JSON response such as  
+`{"service":"oauth-server","status":"ok","note":"Development stub running over http"}`, the setup is successful.
 
-Environment overrides:
+### Installing ngrok and Verifying the Setup
 
-- `OAUTH_PORT` / `MCP_PORT`
-- `OAUTH_SERVER_ISSUER` (defaults to `http://localhost:9000`; set to your ngrok HTTPS OAuth URL for Authlete)
-- `MCP_BASE_URL` (defaults to `http://localhost:${MCP_PORT}`; OAuth audience is `${MCP_BASE_URL}/mcp`)
-- `AUTH_SECRET` (required by `@hono/session` to encrypt the login session cookie)
-- `MCP_SCOPES` (comma-separated list, defaults to `mcp.echo`)
-- `MCP_SERVICE_DOCUMENTATION_URL` (optional URL linked from metadata)
-- `MCP_RESOURCE_NAME`, `MCP_SERVER_NAME`, `MCP_SERVER_VERSION` (optional display strings)
+Visit [ngrok](https://ngrok.com/) and sign up or log in.  
+Follow the instructions on [Setup & Installation](https://dashboard.ngrok.com/get-started/setup/) to install and initialize ngrok.
 
-## Exposing oauth-server via ngrok CLI
+Command examples:
 
-1. Start the local servers:
+```sh
+# macOS
+brew install ngrok
 
-   ```bash
-   npm run dev
-   ```
+# windows
+winget install ngrok -s msstore
 
-2. In another terminal, authenticate ngrok (one-time setup):
+ngrok config add-authtoken <your-ngrok-token>
+```
 
-   ```bash
-   ngrok config add-authtoken <your-token>
-   ```
+After installation, open another terminal while the development servers are running and execute the following command:
 
-3. Expose only the oauth-server (port `9000`):
+```
+ngrok http 9000
 
-   ```bash
-   ngrok http 9000
-   ```
+# ngrok                                                                                                 (Ctrl+C to quit)
+#                                                                                                                       
+# 🚪 One gateway for every AI model. Available in early access *now*: https://ngrok.com/r/ai                            
+#                                                                                                                       
+# Session Status                online                                                                                  
+# Account                       **************** (Plan: Free)                                               
+# Version                       3.35.0                                                                                  
+# Region                        United States (us)                                                                      
+# Latency                       184ms                                                                                   
+# Web Interface                 http://127.0.0.1:4040                                                                   
+# Forwarding                    https://60609a8e4e64.ngrok-free.app -> http://localhost:9000 
+```
 
-The CLI prints an `https://*.ngrok-free.app` URL that proxies to `http://localhost:9000`. Share that URL for external testing while keeping the MCP server private. Stop ngrok with `Ctrl+C` when finished.
+Access the URL shown under `Forwarding`.  
+If you receive the same response as locally,  
+`{"service":"oauth-server","status":"ok","note":"Development stub running over http"}`, the setup is complete.
 
-> **Note:** Because Authlete will call back to the authorization server over HTTPS, ensure this ngrok URL is configured anywhere Authlete expects the issuer/endpoint origins.
+### (Optional) Fixing the ngrok URL
 
-## OAuth-protected MCP server
+The URL issued by ngrok changes every time ngrok is restarted.  
+During the hands-on session, this is usually not an issue because ngrok will remain connected. However, if you want a fixed URL, you can issue a custom domain from the [ngrok Domain settings](https://dashboard.ngrok.com/domains). Even on the free plan, you can obtain a dev domain such as `<prefix>.ngrok-free.dev`.
 
-- `@hono/mcp`'s `simpleMcpAuthRouter` serves all `/.well-known` resources, pointing clients to the local MCP endpoint (`${MCP_BASE_URL}/mcp`, default `http://localhost:9001/mcp`).
-- Every request under `/mcp` must include `Authorization: Bearer <token>`. Tokens are validated with the OAuth server’s JWKS: the MCP server auto-discovers `jwks_uri` from `${OAUTH_SERVER_ISSUER}/.well-known/oauth-authorization-server` (falling back to `.well-known/openid-configuration`) and enforces `audience`/`scope`. Failures (missing/invalid tokens or insufficient scope) return RFC 6750-compliant `WWW-Authenticate` headers so clients know how to recover.
-- `@modelcontextprotocol/sdk` powers the MCP Echo tool (`mcp.echo`). Extend `/apps/mcp-server/src/mcp` with additional tools as you expand coverage.
+If you have obtained a domain, start ngrok with the following command:
 
-## File layout
+```sh
+ngrok http --url=<prefix>.ngrok-free.dev 9000
+```
 
-- `apps/oauth-server/src/index.ts`: minimal OAuth endpoints (HTTP stub)
-- `apps/mcp-server/src/index.ts`: bearer-protected MCP Echo stub
+This completes the preparation.  
+Materials for the hands-on work on the day of the session will be added under [docs](./docs).

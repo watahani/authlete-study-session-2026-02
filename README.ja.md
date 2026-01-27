@@ -53,7 +53,7 @@ http://localhost:9000 にアクセスし、`{"service":"oauth-server","status":"
 
 ### ngrok のインストールと動作確認
 
-[ngrok](https://ngrok.com/) にアクセスし、サインアップまたはログインします。[Setup&Installation](https://dashboard.ngrok.com/get-started/setup/) の手順に従い ngrok のインストールと初期化を行います。
+[ngrok](https://ngrok.com/) にアクセスし、サインアップまたはログインします。[Setup&Installation](https://dashboard.ngrok.com/get-started/setup/) の手順に従い ngrok のインストールと初期設定を行います。
 
 コマンド例
 
@@ -77,7 +77,7 @@ ngrok http 9000
 # 🚪 One gateway for every AI model. Available in early access *now*: https://ngrok.com/r/ai                            
 #                                                                                                                       
 # Session Status                online                                                                                  
-# Account                       wataru.haniyama@authlete.com (Plan: Free)                                                  
+# Account                       **************** (Plan: Free)                                                  
 # Version                       3.35.0                                                                                  
 # Region                        United States (us)                                                                      
 # Latency                       184ms                                                                                   
