@@ -134,6 +134,8 @@ app.get('/.well-known/openid-configuration', openIdConfigHandler);
 実装が完了したら http://localhost:9000/sample-client にアクセスを行い、認可リクエストを送信してみましょう。
 `Start authorization` ボタンをクリックすると、認可リクエストが送信されます。認可エンドポイントから正しく認可コード応答が返り、`Exchange code` ボタンでトークンの交換ができれば完了です。
 
+https://jwt.io などでトークンをでコードし、ペイロードを確認してみましょう。認可リクエストで指定したパラメーターや、認可サーバーで埋め込んだユーザークレームが含まれていることを確認してください。
+
 ## HTTPS での公開
 
 `/sample-client` では認可エンドポイントやトークンエンドポイントを `/authorize` や `/token` など、決め打ちで相対パスを指定しています。
@@ -167,3 +169,7 @@ Forwarding に表示された URL をコピーし、以下の個所に反映さ�
 > ※開発中のワークアラウンドとしてメタデータの応答 (例えば authorization_endpoint) を編集し、http スキーマに書き換えるといった手法もありますが、今回は素直に HTTPS での公開をします。
 
 認可サーバーの実装はこれで完了です。
+
+## 次の手順
+
+[VS Code との連携確認](./03-call-mcp-tool-via-vscode.md)
