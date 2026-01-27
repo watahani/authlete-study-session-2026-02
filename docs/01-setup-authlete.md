@@ -39,7 +39,9 @@ AUTHLETE_SERVICE_ACCESSTOKEN=CCVfO91zGcjgUkatssaNwSsGG-NYTbFlbO8ORSEkFLQ # Repla
 
 ### グラントタイプ
 
-[エンドポイント] > [基本設定] > [一般] > [サポート可能なグラントタイプ] では `AUTHORIZATION_CODE` と `REFRESH_TOKEN` のみを選択し、変更を保存をクリックします。
+[エンドポイント] > [基本設定] > [一般] > [サポート可能なグラントタイプ] では `AUTHORIZATION_CODE` と `REFRESH_TOKEN`, `DEVICE_CODE` のみを選択し、変更を保存をクリックします。
+
+> Note: `DEVICE_CODE` の実装は本ハンズオンでは行いませんが、VS Code のメタデータが `grant_types` に `urn:ietf:params:oauth:grant-type:device_code` を指定しているため有効化しています。[Client Metadata Policy](https://qiita.com/TakahikoKawasaki/items/e4898a31f3ae52be3eff) で認可サーバーのサポートしていない grant_type を上書きすることができますが、本セッション開催時点ではコンソールに設定項目がないため上記の対応としています。
 
 ### PKCE を必須にする
 
@@ -60,6 +62,10 @@ AUTHLETE_SERVICE_ACCESSTOKEN=CCVfO91zGcjgUkatssaNwSsGG-NYTbFlbO8ORSEkFLQ # Repla
 画面真ん中の Public and Private Keypair Set をコピーし、Authlete のサービス設定 [キーマネージメント] > [JWK Set] > [認可サーバー] > [JWKセットの内容] に貼り付けます。IDトークンの署名キーID には `rsa1` を指定します。
 
 ![set up jwk set content in console](../img/01-setup-authlete/jwk-set.png)
+
+同様に [トークン&クレーム] > [アクセストークン] > [一般] の `署名アルゴリズムを選択` を `PS256` に、`署名キーIDを入力` に `rsa1` を設定し、変更を保存をクリックします。 
+
+![configure the access token signing key](../img/01-setup-authlete/access-token-signing-key.png)
 
 ### CIMD (Client ID Metadata Document) の有効化
 
