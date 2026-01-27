@@ -34,6 +34,9 @@ export function createTokenVerifier(config: TokenVerifierConfig) {
       throw new Error('JWKS is unavailable');
     }
     console.log(`Verifying token issued by ${config.issuer} for audience ${config.audience}`);
+
+    // For debugging purposes
+    console.log(`Token: ${token}`);
     const jwksUri = await jwksUriPromise;
     if (jwksUri) {
       console.log(`Using JWKS URI: ${jwksUri}`);
