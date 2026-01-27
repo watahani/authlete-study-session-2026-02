@@ -5,8 +5,9 @@ Authlete へのサインアップを行いサービスとサンプルクライ�
 
 1. グラントタイプ: 認可コードグラントとリフレッシュトークングラントを有効化
 2. 認可コード交換用証明キー（PKCE）を必須にする
-2. JWT 形式のトークン署名用の JWKS セットの登録
-3. CIMD (Client ID Metadata Document) の有効化
+3. MCP サーバー用のスコープ (mcp.echo) を追加 
+4. JWT 形式のトークン署名用の JWKS セットの登録
+5. CIMD (Client ID Metadata Document) の有効化
 
 ## .env ファイルのコピー
 
@@ -46,6 +47,16 @@ AUTHLETE_SERVICE_ACCESSTOKEN=CCVfO91zGcjgUkatssaNwSsGG-NYTbFlbO8ORSEkFLQ # Repla
 ### PKCE を必須にする
 
 [エンドポイント] >  [認可] > [一般] > [認可コード交換用証明キー（PKCE）] で `PKCEを必須にする`, `コードチャレンジメソッドに対してS256を必須にする` を有効にし、変更を保存をクリックします。
+
+###  MCP サーバー用のスコープ (mcp.echo) を追加
+
+1. [トークン&クレーム] > [詳細設定] > [スコープ] > [サポート可能なスコープ] で `追加` をクリックします。
+2. スコープ名に `mcp.echo` を、説明に `echo mcp server の呼び出し` と指定し、`追加` をクリックします。
+3. 変更を保存をクリックします。
+
+![add scope for mcp server](../img/01-setup-authlete/scope-setting.png)
+
+> Node: ここで設定した scope は .env の `MCP_SCOPES` に対応します。サンプル MCP サーバーの実装はこの値を 401 応答に含まれる `WWW-Authentication ヘッダー` の `scope`, Protected Resource Metadata の `supported_scopes` の値として利用します。
 
 ### JWKセットの内容
 
