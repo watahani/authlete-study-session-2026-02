@@ -15,6 +15,8 @@ Before participating in the hands-on session, please install the following tools
 - git: Required to clone the repository.
 - Node.js runtime (>= 18): Required to run the sample.
 - [ngrok CLI](https://ngrok.com/download): Required to expose the authorization server over HTTPS.
+- [Visual Studio Code](https://code.visualstudio.com/): Used as the MCP client. You can implement the code in any editor you like.
+- Sign up for the free (or higher) plan of [GitHub Copilot](https://github.com/features/copilot/): Used to confirm the connection between VS Code and the MCP server. Any other client that supports CIMD is also fine.
 
 ### Installing Node.js and Verifying the Setup
 
