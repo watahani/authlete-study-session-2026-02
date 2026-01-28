@@ -110,4 +110,4 @@ ngrok http --url=<prefix>.ngrok-free.dev 9000
 ```
 
 This completes the preparation.  
-Materials for the hands-on work on the day of the session will be added under [docs](./docs).
+Materials for the hands-on work on the day of the session will be added under [docs](./docs-en).
