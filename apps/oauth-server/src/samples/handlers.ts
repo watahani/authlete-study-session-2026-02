@@ -251,7 +251,7 @@ function resolveClientId(info: AuthorizationResponse) {
                 throw new Error('Client entityId is missing');
             }
         case 'METADATA_DOCUMENT':
-        // return client.metadataDocumentLocation; //TODO
+            return client.metadataDocumentLocation;
         case 'DYNAMIC_REGISTRATION':
         case 'STATIC_REGISTRATION':
             return client.clientIdAlias;

@@ -9,7 +9,6 @@
     "dev": "npx concurrently -k -n oauth,mcp -c green,cyan \"npm:dev:oauth\" \"npm:dev:mcp\""
   },
   "dependencies": {
-    "@authlete/typescript-sdk": "^0.0.8-beta",
     "@hono/mcp": "^0.2.3",
     "@hono/node-server": "^1.9.1",
     "@hono/session": "^0.2.0",
@@ -21,6 +20,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@authlete/typescript-sdk": "^0.0.9-beta",
     "@types/node": "^20.14.12",
     "concurrently": "^8.2.2",
     "tsx": "^4.11.2",
