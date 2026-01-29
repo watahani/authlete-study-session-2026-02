@@ -10,11 +10,11 @@ import {
   consentHandler,
   jwksHandler,
   openIdConfigHandler,
-  sampleClientHandler,
   tokenHandler,
 } from './samples/handlers';
 import { getAuthlete } from './authlete';
 import { config } from './config';
+import { sampleClientHandler } from './samples/client';
 
 const app = new Hono();
 const PORT = config.port;
