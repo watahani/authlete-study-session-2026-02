@@ -52,7 +52,7 @@ export const sampleClientHandler = (c: Context) => {
         for (let i = 0; i < bytes.length; i += chunkSize) {
           binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
         }
-        return btoa(binary).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+        return btoa(binary).replace(/=/g, '').replace(/\\+/g, '-').replace(/\\//g, '_');
       }
 
       function generateVerifier() {
