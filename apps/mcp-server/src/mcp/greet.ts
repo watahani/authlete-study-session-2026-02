@@ -23,21 +23,21 @@ export function registerGreetTool(server: McpServer) {
     async (_input, extra) => {
       const payload = (extra.authInfo?.extra?.payload ?? {}) as Record<string, unknown>;
 
-      let prefferedUsername = findStringClaim(payload, ['preferred_username']);
-      if (!prefferedUsername) {
+      let preferredUsername = findStringClaim(payload, ['preferred_username', 'preffered_username']);
+      if (!preferredUsername) {
         const firstName = findStringClaim(payload, FIRST_NAME_KEYS);
         const lastName = findStringClaim(payload, LAST_NAME_KEYS);
         if (!firstName || !lastName) {
           throw new Error('preferred_username or first and last name claims are required');
         }
-        prefferedUsername = `${firstName} ${lastName}`;
+        preferredUsername = `${firstName} ${lastName}`;
       }
 
       return {
         content: [
           {
             type: 'text',
-            text: `hello ${prefferedUsername}!`,
+            text: `hello ${preferredUsername}!`,
           },
         ],
       };

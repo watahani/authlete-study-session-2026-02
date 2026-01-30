@@ -1,4 +1,5 @@
 import type { Context } from 'hono';
+import { html } from 'hono/html';
 import {
     type AuthorizationFailResponse,
     type AuthorizationRequest,
@@ -15,14 +16,15 @@ const demoUser: User = {
     claims: {
         family_name: 'Demo',
         given_name: 'Authlete',
-        preffered_username: "Authlete Demo User"
+        preferred_username: "Authlete Demo User"
     },
     consentedScopes: [],
 };
 
 export const authorizeHandler = async (c: Context) => {
     const { authlete, serviceId } = c.var;
-    const parameters = c.req.url.split('?')[1] ?? '';
+    const { search } = new URL(c.req.url);
+    const parameters = search.startsWith('?') ? search.slice(1) : '';
     const authorizationRequest: AuthorizationRequest = {
         parameters
     };
@@ -92,6 +94,13 @@ export const consentHandler = async (c: Context) => {
             if (issueResponse.responseContent) {
                 return c.redirect(issueResponse.responseContent);
             }
+            return c.json(
+                {
+                    error: 'server_error',
+                    error_description: 'Authorization issue response missing redirect location'
+                },
+                500,
+            );
         case 'BAD_REQUEST':
             return c.json(
                 {
@@ -212,7 +221,7 @@ async function renderConsent(
     const scopes = response.scopes ?? [];
     const resources = response.resources ?? [];
 
-    return c.html(`<!doctype html>
+    return c.html(html`<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -225,9 +234,17 @@ async function renderConsent(
       <p>Client: ${clientName}</p>
       <p>Client ID: ${clientId}</p>
       <h2>Scopes</h2>
-      ${scopes.length === 0 ? '<p>No scopes requested.</p>' : `<ul>${scopes.map((scope) => `<li>${scope.name}: ${scope.description}</li>`).join('')}</ul>`}
+      ${
+        scopes.length === 0
+          ? html`<p>No scopes requested.</p>`
+          : html`<ul>${scopes.map((scope) => html`<li>${scope.name}: ${scope.description}</li>`)}</ul>`
+      }
       <h2>Resources</h2>
-      ${resources.length === 0 ? '<p>No resources requested.</p>' : `<ul>${resources.map((resource) => `<li>${resource}</li>`).join('')}</ul>`}
+      ${
+        resources.length === 0
+          ? html`<p>No resources requested.</p>`
+          : html`<ul>${resources.map((resource) => html`<li>${resource}</li>`)}</ul>`
+      }
       <form method="post" action="/consent" style="margin-top: 12px;">
       <button type="submit" name="decision" value="approve">Log in and approve</button>
       <button type="submit" name="decision" value="deny">Deny</button>
